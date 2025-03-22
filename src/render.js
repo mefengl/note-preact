@@ -1,3 +1,8 @@
+/**
+ * Preact渲染系统的核心文件
+ * 负责将虚拟DOM转换为实际的DOM元素，并处理更新和水合（hydration）
+ */
+
 import { EMPTY_OBJ, NULL } from './constants';
 import { commitRoot, diff } from './diff/index';
 import { createElement, Fragment } from './create-element';
@@ -5,74 +10,89 @@ import options from './options';
 import { slice } from './util';
 
 /**
- * Render a Preact virtual node into a DOM element
- * @param {import('./internal').ComponentChild} vnode The virtual node to render
- * @param {import('./internal').PreactElement} parentDom The DOM element to render into
- * @param {import('./internal').PreactElement | object} [replaceNode] Optional: Attempt to re-use an
- * existing DOM tree rooted at `replaceNode`
+ * render函数 - Preact的核心渲染函数
+ * 将虚拟节点渲染到实际的DOM元素中
+ * 
+ * 工作流程：
+ * 1. 处理特殊情况（如直接渲染到document）
+ * 2. 创建或复用虚拟节点树
+ * 3. 执行diff算法计算更新
+ * 4. 提交所有DOM更新和副作用
+ * 
+ * @param {ComponentChild} vnode - 要渲染的虚拟节点
+ * @param {PreactElement} parentDom - 目标DOM容器
+ * @param {PreactElement | function} [replaceNode] - 可选，用于复用已存在的DOM树或标记hydration模式
  */
 export function render(vnode, parentDom, replaceNode) {
-	// https://github.com/preactjs/preact/issues/3794
-	if (parentDom == document) {
-		parentDom = document.documentElement;
-	}
+    // 修复 #3794：如果父节点是document，使用documentElement代替
+    if (parentDom == document) {
+        parentDom = document.documentElement;
+    }
 
-	if (options._root) options._root(vnode, parentDom);
+    // 调用根节点钩子（如果存在）
+    if (options._root) options._root(vnode, parentDom);
 
-	// We abuse the `replaceNode` parameter in `hydrate()` to signal if we are in
-	// hydration mode or not by passing the `hydrate` function instead of a DOM
-	// element..
-	let isHydrating = typeof replaceNode == 'function';
+    // 检查是否处于hydration模式
+    // hydration模式下replaceNode是一个函数而不是DOM节点
+    let isHydrating = typeof replaceNode == 'function';
 
-	// To be able to support calling `render()` multiple times on the same
-	// DOM node, we need to obtain a reference to the previous tree. We do
-	// this by assigning a new `_children` property to DOM nodes which points
-	// to the last rendered tree. By default this property is not present, which
-	// means that we are mounting a new tree for the first time.
-	let oldVNode = isHydrating
-		? NULL
-		: (replaceNode && replaceNode._children) || parentDom._children;
+    // 获取之前渲染的虚拟节点树
+    // DOM节点的_children属性存储了上次渲染的虚拟节点树
+    let oldVNode = isHydrating
+        ? NULL
+        : (replaceNode && replaceNode._children) || parentDom._children;
 
-	vnode = ((!isHydrating && replaceNode) || parentDom)._children =
-		createElement(Fragment, NULL, [vnode]);
+    // 将要渲染的内容包装在Fragment中
+    // 这样可以支持渲染多个顶级节点
+    vnode = ((!isHydrating && replaceNode) || parentDom)._children =
+        createElement(Fragment, NULL, [vnode]);
 
-	// List of effects that need to be called after diffing.
-	let commitQueue = [],
-		refQueue = [];
-	diff(
-		parentDom,
-		// Determine the new vnode tree and store it on the DOM element on
-		// our custom `_children` property.
-		vnode,
-		oldVNode || EMPTY_OBJ,
-		EMPTY_OBJ,
-		parentDom.namespaceURI,
-		!isHydrating && replaceNode
-			? [replaceNode]
-			: oldVNode
-				? NULL
-				: parentDom.firstChild
-					? slice.call(parentDom.childNodes)
-					: NULL,
-		commitQueue,
-		!isHydrating && replaceNode
-			? replaceNode
-			: oldVNode
-				? oldVNode._dom
-				: parentDom.firstChild,
-		isHydrating,
-		refQueue
-	);
+    // 创建更新队列
+    let commitQueue = [],    // 存储需要执行的DOM更新
+        refQueue = [];       // 存储需要更新的ref引用
 
-	// Flush all queued effects
-	commitRoot(commitQueue, vnode, refQueue);
+    // 执行diff算法
+    diff(
+        parentDom,          // 父DOM节点
+        vnode,              // 新的虚拟节点树
+        oldVNode || EMPTY_OBJ,  // 旧的虚拟节点树
+        EMPTY_OBJ,         // context对象
+        parentDom.namespaceURI,  // XML命名空间
+        // hydration模式：使用现有DOM节点
+        // 非hydration模式：获取所有子节点
+        !isHydrating && replaceNode
+            ? [replaceNode]
+            : oldVNode
+                ? NULL
+                : parentDom.firstChild
+                    ? slice.call(parentDom.childNodes)
+                    : NULL,
+        commitQueue,        // DOM更新队列
+        // 确定新内容要插入的位置
+        !isHydrating && replaceNode
+            ? replaceNode
+            : oldVNode
+                ? oldVNode._dom
+                : parentDom.firstChild,
+        isHydrating,       // 是否是hydration模式
+        refQueue          // ref更新队列
+    );
+
+    // 提交所有DOM更新和副作用
+    commitRoot(commitQueue, vnode, refQueue);
 }
 
 /**
- * Update an existing DOM element with data from a Preact virtual node
- * @param {import('./internal').ComponentChild} vnode The virtual node to render
- * @param {import('./internal').PreactElement} parentDom The DOM element to update
+ * hydrate函数 - 用于服务端渲染的客户端激活
+ * 复用服务端渲染的DOM树，为其添加事件处理和状态
+ * 
+ * hydration过程会尽可能复用现有DOM节点，而不是重新创建它们
+ * 这样可以保持良好的首屏性能，同时确保交互功能正常工作
+ * 
+ * @param {ComponentChild} vnode - 要激活的虚拟节点
+ * @param {PreactElement} parentDom - 包含服务端渲染内容的DOM容器
  */
 export function hydrate(vnode, parentDom) {
-	render(vnode, parentDom, hydrate);
+    // 调用render函数，传入hydrate本身作为标记
+    render(vnode, parentDom, hydrate);
 }

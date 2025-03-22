@@ -1,3 +1,116 @@
+# 代码阅读推荐顺序
+
+## 一、核心架构实现
+
+### 1. 基础设施
+
+1. src/constants.js - 常量定义，包括特殊标记和模式
+2. src/util.js - 通用工具函数
+3. src/options.js - 全局配置和钩子系统
+
+### 2. 虚拟DOM实现
+
+1. src/create-element.js - JSX转换和虚拟DOM节点创建
+2. src/clone-element.js - 虚拟DOM节点克隆
+3. src/component.js - 组件基类实现
+4. src/create-context.js - Context上下文系统
+
+### 3. 渲染系统
+
+1. src/render.js - DOM渲染的核心实现
+2. src/diff/index.js * - 差异对比算法入口
+3. src/diff/children.js * - 子节点对比算法
+4. src/diff/props.js * - 属性对比算法
+5. src/diff/catch-error.js * - 错误边界处理
+
+## 二、核心功能模块
+
+### 1. Hooks系统
+
+1. hooks/src/index.js * - Hooks实现入口
+2. hooks/src/internal.d.ts * - Hooks内部类型定义
+3. hooks/test/browser/useState.test.js * - useState实现测试
+4. hooks/test/browser/useEffect.test.js * - useEffect实现测试
+5. hooks/test/browser/useCallback.test.js * - useCallback实现测试
+6. hooks/test/browser/useMemo.test.js * - useMemo实现测试
+7. hooks/test/browser/useRef.test.js * - useRef实现测试
+8. hooks/test/browser/useContext.test.js * - useContext实现测试
+
+### 2. React兼容层
+
+1. compat/src/index.js * - React兼容层入口
+2. compat/src/render.js * - React渲染适配
+3. compat/src/hooks.js * - React Hooks适配
+4. compat/src/Children.js * - React.Children实现
+5. compat/src/PureComponent.js * - React.PureComponent实现
+6. compat/src/memo.js * - React.memo实现
+7. compat/src/forwardRef.js * - React.forwardRef实现
+8. compat/src/suspense.js * - Suspense功能实现
+
+### 3. JSX运行时
+
+1. jsx-runtime/src/index.js * - JSX运行时入口
+2. jsx-runtime/src/utils.js * - JSX工具函数
+
+## 三、开发工具和调试功能
+
+### 1. 开发工具
+
+1. devtools/src/devtools.js * - 开发者工具实现
+2. devtools/src/index.js * - 开发者工具入口
+
+### 2. 调试功能
+
+1. debug/src/debug.js * - 调试核心功能
+2. debug/src/check-props.js * - 属性检查
+3. debug/src/component-stack.js * - 组件栈追踪
+4. debug/src/constants.js * - 调试常量
+
+## 四、测试用例（重要实现参考）
+
+### 1. 核心功能测试
+
+1. test/browser/components.test.js * - 组件系统测试
+2. test/browser/render.test.js * - 渲染系统测试
+3. test/browser/context.test.js * - Context系统测试
+4. test/browser/fragments.test.js * - Fragments功能测试
+
+### 2. 生命周期测试
+
+1. test/browser/lifecycles/componentDidMount.test.js * - 挂载生命周期
+2. test/browser/lifecycles/componentDidUpdate.test.js * - 更新生命周期
+3. test/browser/lifecycles/componentWillUnmount.test.js * - 卸载生命周期
+4. test/browser/lifecycles/getDerivedStateFromProps.test.js * - 派生状态
+5. test/browser/lifecycles/getSnapshotBeforeUpdate.test.js * - 更新快照
+
+## 五、示例代码（实际应用参考）
+
+### 1. 基础功能示例
+
+1. demo/context.jsx * - Context使用示例
+2. demo/fragments.jsx * - Fragments使用示例
+3. demo/list.jsx * - 列表渲染示例
+4. demo/todo.jsx * - Todo应用示例
+
+### 2. 高级特性示例
+
+1. demo/suspense.jsx * - Suspense使用示例
+2. demo/nested-suspense/index.jsx * - 嵌套Suspense示例
+3. demo/suspense-router/index.jsx * - Suspense配合路由示例
+
+### 3. 状态管理示例
+
+1. demo/mobx.jsx * - MobX集成示例
+2. demo/redux.jsx * - Redux集成示例
+3. demo/zustand.jsx * - Zustand集成示例
+
+### 4. 性能优化示例
+
+1. benchmarks/apps/many-updates/preact/index.js * - 大量更新性能测试
+2. benchmarks/apps/table-app/preact/index.js * - 表格应用性能测试
+
+---
+
 <p align="center">
 <a href="https://preactjs.com" target="_blank">
 
@@ -60,18 +173,18 @@ import { h, render } from 'preact';
 
 // create our tree and append it to document.body:
 render(
-	<main>
-		<h1>Hello</h1>
-	</main>,
-	document.body
+ <main>
+  <h1>Hello</h1>
+ </main>,
+ document.body
 );
 
 // update the tree in-place:
 render(
-	<main>
-		<h1>Hello World!</h1>
-	</main>,
-	document.body
+ <main>
+  <h1>Hello World!</h1>
+ </main>,
+ document.body
 );
 // ^ this second invocation of render(...) will use a single DOM call to update the text of the <h1>
 ```
@@ -85,14 +198,14 @@ import { useState } from 'preact/hooks';
 /** @jsx h */
 
 const App = () => {
-	const [input, setInput] = useState('');
+ const [input, setInput] = useState('');
 
-	return (
-		<div>
-			<p>Do you agree to the statement: "Preact is awesome"?</p>
-			<input value={input} onInput={e => setInput(e.target.value)} />
-		</div>
-	);
+ return (
+  <div>
+   <p>Do you agree to the statement: "Preact is awesome"?</p>
+   <input value={input} onInput={e => setInput(e.target.value)} />
+  </div>
+ );
 };
 
 render(<App />, document.body);
@@ -181,5 +294,4 @@ MIT
 [![Preact](https://i.imgur.com/YqCHvEW.gif)](https://preactjs.com)
 
 [preact/compat]: https://github.com/preactjs/preact/tree/main/compat
-[hyperscript]: https://github.com/dominictarr/hyperscript
 [DevTools]: https://github.com/preactjs/preact-devtools
